@@ -17,19 +17,10 @@ var logger lager.Logger
 
 func main() {
 	logger = lager.NewLogger("nats-to-syslog")
-
 	stop = make(chan bool)
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT)
-	signal.Notify(signals, syscall.SIGKILL)
-	signal.Notify(signals, syscall.SIGTERM)
+	buffer := make(chan *nats.Msg, 1000)
 
-	go func() {
-		for signal := range signals {
-			logger.Info("signal-caught", lager.Data{"signal": signal})
-			stop <- true
-		}
-	}()
+	trapSignals()
 
 	var natsUri = flag.String("nats-uri", "nats://localhost:4222", "The NATS server URI")
 	var natsSubject = flag.String("nats-subject", ">", "The NATS subject to subscribe to")
@@ -37,33 +28,17 @@ func main() {
 	var debug = flag.Bool("debug", false, "debug logging true/false")
 	flag.Parse()
 
-	if *debug {
-		logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
-	} else {
-		logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	}
+	setupLogger(*debug)
 
-	syslog, err := syslog.Dial("tcp", *syslogEndpoint, syslog.LOG_INFO, "nats-to-syslog")
-	handleError(err, "connecting to syslog")
-	logger.Info("connected-to-syslog", lager.Data{"endpoint": syslogEndpoint})
+	syslog := connectToSyslog(*syslogEndpoint)
 	defer syslog.Close()
 
-	natsClient, err := nats.Connect(*natsUri)
-	handleError(err, "connecting to nats")
-	logger.Info("connected-to-nats", lager.Data{"uri": natsUri})
+	natsClient := connectToNATS(*natsUri)
 	defer natsClient.Close()
-
-	buffer := make(chan *nats.Msg, 1000)
 
 	go func() {
 		for message := range buffer {
-			logEntry := buildLogEntry(message)
-			logger.Debug("message-sent-to-syslog", lager.Data{"message": logEntry})
-			err = syslog.Info(logEntry)
-			if err != nil {
-				logger.Error("logging-to-syslog-failed", err)
-				stop <- true
-			}
+			sendToSyslog(message, syslog)
 		}
 	}()
 
@@ -103,4 +78,50 @@ func buildLogEntry(message *nats.Msg) string {
 	}
 
 	return string(data)
+}
+
+func connectToSyslog(endpoint string) *syslog.Writer {
+	syslog, err := syslog.Dial("tcp", endpoint, syslog.LOG_INFO, "nats-to-syslog")
+	handleError(err, "connecting to syslog")
+	logger.Info("connected-to-syslog", lager.Data{"endpoint": endpoint})
+	return syslog
+}
+
+func connectToNATS(natsUri string) *nats.Conn {
+	natsClient, err := nats.Connect(natsUri)
+	handleError(err, "connecting to nats")
+	logger.Info("connected-to-nats", lager.Data{"uri": natsUri})
+	return natsClient
+}
+
+func sendToSyslog(message *nats.Msg, syslog *syslog.Writer) {
+	logEntry := buildLogEntry(message)
+	logger.Debug("message-sent-to-syslog", lager.Data{"message": logEntry})
+	err := syslog.Info(logEntry)
+	if err != nil {
+		logger.Error("logging-to-syslog-failed", err)
+		stop <- true
+	}
+}
+
+func setupLogger(debug bool) {
+	if debug {
+		logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	} else {
+		logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	}
+}
+
+func trapSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT)
+	signal.Notify(signals, syscall.SIGKILL)
+	signal.Notify(signals, syscall.SIGTERM)
+
+	go func() {
+		for signal := range signals {
+			logger.Info("signal-caught", lager.Data{"signal": signal})
+			stop <- true
+		}
+	}()
 }
