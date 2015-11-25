@@ -16,6 +16,10 @@
 			"ImportPath": "github.com/onsi/gomega",
 			"Comment": "v1.0",
 			"Rev": "a78ae492d53aad5a7a232d0d0462c14c400e3ee7"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/lager",
+			"Rev": "95b2ada4cdf781bdcf07e5207879e034ac8c5314"
 		}
 	]
 }
