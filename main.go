@@ -12,6 +12,12 @@ import (
 	"syscall"
 )
 
+type logEntry struct {
+	Data    string
+	Reply   string
+	Subject string
+}
+
 var stop chan bool
 var logger lager.Logger
 
@@ -60,15 +66,11 @@ func handleError(err error, context string) {
 	}
 }
 
-func buildLogEntry(message *nats.Msg) string {
-	entry := struct {
-		Data    string
-		Reply   string
-		Subject string
-	}{
-		string(message.Data),
-		message.Reply,
-		message.Subject,
+func buildLogMessage(message *nats.Msg) string {
+	entry := logEntry{
+		Data:    string(message.Data),
+		Reply:   message.Reply,
+		Subject: message.Subject,
 	}
 
 	data, err := json.Marshal(entry)
@@ -95,9 +97,9 @@ func connectToNATS(natsUri string) *nats.Conn {
 }
 
 func sendToSyslog(message *nats.Msg, syslog *syslog.Writer) {
-	logEntry := buildLogEntry(message)
-	logger.Debug("message-sent-to-syslog", lager.Data{"message": logEntry})
-	err := syslog.Info(logEntry)
+	logMessage := buildLogMessage(message)
+	logger.Debug("message-sent-to-syslog", lager.Data{"message": logMessage})
+	err := syslog.Info(logMessage)
 	if err != nil {
 		logger.Error("logging-to-syslog-failed", err)
 		stop <- true
