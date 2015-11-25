@@ -41,7 +41,7 @@ var _ = Describe("NatsToSyslog", func() {
 	})
 
 	It("forwards NATS messages to syslog", func() {
-		testBinary := exec.Command(testBinaryPath, "-nats-uri", "nats://nats:c1oudc0w@127.0.0.1:4567", "-syslog-server", "localhost:6789")
+		testBinary := exec.Command(testBinaryPath, "-nats-uri", "nats://nats:c1oudc0w@127.0.0.1:4567", "-syslog-endpoint", "localhost:6789", "-nats-subject", "testSubject", "-debug", "true")
 		testSession, err := gexec.Start(testBinary, GinkgoWriter, GinkgoWriter)
 		handleError(err)
 		defer testSession.Kill()
@@ -50,18 +50,19 @@ var _ = Describe("NatsToSyslog", func() {
 		go func() {
 			var err error
 			remoteClient, err = syslogServer.AcceptTCP()
+			remoteClient.SetReadDeadline(time.Now().Add(2 * time.Second))
 			handleError(err)
 		}()
 		time.Sleep(500 * time.Millisecond)
 		reader := bufio.NewReader(remoteClient)
 		defer remoteClient.Close()
 
-		natsClient.Publish("testTopic", []byte("test message"))
+		natsClient.Publish("testSubject", []byte("test message"))
 		time.Sleep(1 * time.Second)
 
 		logLine, _, err := reader.ReadLine()
 		handleError(err)
-		Expect(string(logLine)).To(MatchRegexp("^<6>.*nats-to-syslog.*test message$"))
+		Expect(string(logLine)).To(MatchRegexp(`^<6>.*nats-to-syslog.*{"Data":"test message","Reply":"","Subject":"testSubject"}`))
 	})
 
 	AfterEach(func() {
