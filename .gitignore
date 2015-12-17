@@ -22,4 +22,4 @@ _testmain.go
 *.exe
 *.test
 *.prof
-nats-to-syslog
+nats_to_syslog
