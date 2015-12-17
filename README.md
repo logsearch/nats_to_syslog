@@ -1,4 +1,4 @@
-# nats-to-syslog
+# nats_to_syslog
 Subscribes to NATs message bus and forwards messages to remote Syslog server
 
 # Testing
