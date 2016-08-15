@@ -22,7 +22,7 @@ var stop chan bool
 var logger lager.Logger
 
 func main() {
-	logger = lager.NewLogger("nats-to-syslog")
+	logger = lager.NewLogger("nats_to_syslog")
 	stop = make(chan bool)
 	buffer := make(chan *nats.Msg, 1000)
 
@@ -83,7 +83,7 @@ func buildLogMessage(message *nats.Msg) string {
 }
 
 func connectToSyslog(endpoint string) *syslog.Writer {
-	syslog, err := syslog.Dial("tcp", endpoint, syslog.LOG_INFO, "nats-to-syslog")
+	syslog, err := syslog.Dial("tcp", endpoint, syslog.LOG_INFO, "nats_to_syslog")
 	handleError(err, "connecting to syslog")
 	logger.Info("connected-to-syslog", lager.Data{"endpoint": endpoint})
 	return syslog

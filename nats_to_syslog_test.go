@@ -15,7 +15,7 @@ var testBinaryPath string
 
 var _ = BeforeSuite(func() {
 	var err error
-	testBinaryPath, err = gexec.Build("github.com/logsearch/nats-to-syslog")
+	testBinaryPath, err = gexec.Build("github.com/logsearch/nats_to_syslog")
 	handleError(err)
 })
 
@@ -62,7 +62,7 @@ var _ = Describe("NatsToSyslog", func() {
 
 		logLine, _, err := reader.ReadLine()
 		handleError(err)
-		Expect(string(logLine)).To(MatchRegexp(`^<6>.*nats-to-syslog.*{"Data":"test message","Reply":"","Subject":"testSubject"}`))
+		Expect(string(logLine)).To(MatchRegexp(`^<6>.*nats_to_syslog.*{"Data":"test message","Reply":"","Subject":"testSubject"}`))
 	})
 
 	AfterEach(func() {

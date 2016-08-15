@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/logsearch/nats-to-syslog",
+	"ImportPath": "github.com/logsearch/nats_to_syslog",
 	"GoVersion": "go1.5.1",
 	"Deps": [
 		{
